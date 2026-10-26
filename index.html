@@ -815,16 +815,19 @@ function validAi(o){
   return roles.every(k => o[k] && typeof o[k].name === 'string' && o[k].name.trim() && typeof o[k].what === 'string' && typeof o[k].can === 'string') && o.texts && typeof o.texts === 'object';
 }
 
+let aiReason = '';
 async function aiSuggest(inp, t, r){
+  aiReason = '';
   try {
     const res = await fetch('/api/analyze', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: t, niche: inp.niche || '', aud: inp.aud || '', exp: inp.exp || '', hasProducts: !!inp.hasProducts, products: inp.hasProducts ? (inp.products || '') : '' })
     });
-    if (!res.ok) return null;
-    const out = await res.json();
-    return validAi(out) ? out : null;
-  } catch (e) { return null; }
+    const out = await res.json().catch(() => ({ error: 'antwort_unlesbar', detail: 'HTTP ' + res.status }));
+    if (!res.ok || out.error) { aiReason = (out.error || 'fehler') + (out.detail ? ' (' + out.detail + ')' : ''); return null; }
+    if (!validAi(out)) { aiReason = 'unvollständige Antwort'; return null; }
+    return out;
+  } catch (e) { aiReason = 'Verbindung fehlgeschlagen: ' + ((e && e.message) || 'unbekannt'); return null; }
 }
 
 function applyAi(r, ai, t){
@@ -860,7 +863,7 @@ $('go').addEventListener('click', async () => {
     // Keine Standard-Treppen anzeigen: sie passen nicht zu einer individuellen Expertise.
     $('result').classList.add('hidden');
     $('form').classList.remove('hidden');
-    $('err').textContent = 'Die individuelle Treppe konnte gerade nicht erstellt werden. Bitte versuch es gleich noch einmal.';
+    $('err').textContent = 'Die individuelle Treppe konnte nicht erstellt werden. Grund: ' + (aiReason || 'unbekannt');
     return;
   }
   $('out').innerHTML = '';

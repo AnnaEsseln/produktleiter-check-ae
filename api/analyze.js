@@ -1,5 +1,4 @@
-// Vercel-Funktion: nimmt die Eingabe entgegen, haelt die Regeln geheim und fragt Claude.
-// Benoetigt die Umgebungsvariable ANTHROPIC_API_KEY (nur serverseitig).
+// Vercel-Funktion: haelt die Regeln geheim und fragt Claude mit dem Key aus ANTHROPIC_API_KEY.
 
 const RULES = [
 
@@ -20,15 +19,21 @@ const RULES = [
 
 const MODEL = 'claude-sonnet-5-5';
 
-module.exports = async function handler(req, res){
+function send(res, status, body){
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'content-type');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  if (req.method === 'OPTIONS') { res.status(204).end(); return; }
-  if (req.method !== 'POST') { res.status(405).json({ error: 'method' }); return; }
+  res.status(status).json(body);
+}
+
+module.exports = async function handler(req, res){
+  if (req.method === 'OPTIONS') { send(res, 204, {}); return; }
+  if (req.method !== 'POST') { send(res, 405, { error: 'method_not_allowed', detail: 'Nur POST erlaubt.' }); return; }
+
   const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) { res.status(500).json({ error: 'no_key' }); return; }
-  const b = req.body || {};
+  if (!key) { send(res, 500, { error: 'missing_key', detail: 'ANTHROPIC_API_KEY ist in Vercel nicht gesetzt.' }); return; }
+
+  const b = (typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}));
   const t = b.type === 'B2C' ? 'B2C' : 'B2B';
   const data = [
     'Richtung: ' + (t === 'B2C' ? 'B2C (Endkunden, Brautpaare)' : 'B2B (Fotografen und Coaches)'),
@@ -37,21 +42,42 @@ module.exports = async function handler(req, res){
     'Expertise: ' + String(b.exp || '').slice(0, 3000),
     'Bereits vorhandene Produkte: ' + (b.hasProducts ? (String(b.products || '').slice(0, 2000) || '(keine Angabe)') : 'keine')
   ].join('\n');
+
+  let upstream;
   try {
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
+    upstream = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({ model: MODEL, max_tokens: 4000, messages: [{ role: 'user', content: RULES + '\n\nDaten:\n' + data }] })
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 4000,
+        messages: [
+          { role: 'user', content: RULES + '\n\nDaten:\n' + data },
+          { role: 'assistant', content: '{' }
+        ]
+      })
     });
-    const j = await r.json();
-    if (!r.ok) { res.status(502).json({ error: 'anthropic_' + r.status, detail: (j.error && j.error.message) || '' }); return; }
-    const text = (j.content || []).map(c => c.text || '').join('');
-    const m = text.match(/\{[\s\S]*\}/);
-    if (!m) { res.status(502).json({ error: 'no_json', detail: text.slice(0, 200) }); return; }
-    let out;
-    try { out = JSON.parse(m[0]); } catch (e) { res.status(502).json({ error: 'bad_json', detail: String(e.message).slice(0, 200) }); return; }
-    res.status(200).json(out);
   } catch (e) {
-    res.status(502).json({ error: 'upstream', detail: String((e && e.message) || e).slice(0, 200) });
+    send(res, 502, { error: 'network', detail: String((e && e.message) || e).slice(0, 300) });
+    return;
   }
+
+  let j;
+  try { j = await upstream.json(); }
+  catch (e) { send(res, 502, { error: 'anthropic_not_json', detail: 'HTTP ' + upstream.status }); return; }
+
+  if (!upstream.ok) {
+    send(res, 502, { error: 'anthropic_' + upstream.status, detail: (j.error && (j.error.type + ': ' + j.error.message)) || 'unbekannt' });
+    return;
+  }
+
+  const text = '{' + (j.content || []).map(c => c.text || '').join('');
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start < 0 || end < 0) { send(res, 502, { error: 'no_json', detail: text.slice(0, 300) }); return; }
+  let out;
+  try { out = JSON.parse(text.slice(start, end + 1)); }
+  catch (e) { send(res, 502, { error: 'bad_json', detail: String(e.message).slice(0, 200) + ' | Ende: ' + text.slice(-200) }); return; }
+
+  send(res, 200, out);
 };
