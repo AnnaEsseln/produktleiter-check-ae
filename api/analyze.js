@@ -41,14 +41,17 @@ module.exports = async function handler(req, res){
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({ model: MODEL, max_tokens: 2000, messages: [{ role: 'user', content: RULES + '\n\nDaten:\n' + data }] })
+      body: JSON.stringify({ model: MODEL, max_tokens: 4000, messages: [{ role: 'user', content: RULES + '\n\nDaten:\n' + data }] })
     });
     const j = await r.json();
+    if (!r.ok) { res.status(502).json({ error: 'anthropic_' + r.status, detail: (j.error && j.error.message) || '' }); return; }
     const text = (j.content || []).map(c => c.text || '').join('');
     const m = text.match(/\{[\s\S]*\}/);
-    if (!m) { res.status(502).json({ error: 'no_json' }); return; }
-    res.status(200).json(JSON.parse(m[0]));
+    if (!m) { res.status(502).json({ error: 'no_json', detail: text.slice(0, 200) }); return; }
+    let out;
+    try { out = JSON.parse(m[0]); } catch (e) { res.status(502).json({ error: 'bad_json', detail: String(e.message).slice(0, 200) }); return; }
+    res.status(200).json(out);
   } catch (e) {
-    res.status(502).json({ error: 'upstream' });
+    res.status(502).json({ error: 'upstream', detail: String((e && e.message) || e).slice(0, 200) });
   }
 };
