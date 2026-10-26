@@ -856,7 +856,14 @@ $('go').addEventListener('click', async () => {
     const ai = await aiSuggest(inp, t, r);
     if (ai) applyAi(r, ai, t); else usedFallback = true;
   }
-  $('out').innerHTML = usedFallback ? '<p class="notice warn" style="margin:0 0 20px">Die individuelle Treppe konnte gerade nicht erstellt werden. Du siehst die Standard-Treppen. Bitte versuch es gleich noch einmal.</p>' : '';
+  if (usedFallback){
+    // Keine Standard-Treppen anzeigen: sie passen nicht zu einer individuellen Expertise.
+    $('result').classList.add('hidden');
+    $('form').classList.remove('hidden');
+    $('err').textContent = 'Die individuelle Treppe konnte gerade nicht erstellt werden. Bitte versuch es gleich noch einmal.';
+    return;
+  }
+  $('out').innerHTML = '';
   lastText = '';
   results.forEach(({ t, r }) => {
     const box = document.createElement('section');
