@@ -52,8 +52,7 @@ module.exports = async function handler(req, res){
         model: MODEL,
         max_tokens: 4000,
         messages: [
-          { role: 'user', content: RULES + '\n\nDaten:\n' + data },
-          { role: 'assistant', content: '{' }
+          { role: 'user', content: RULES + '\n\nDaten:\n' + data }
         ]
       })
     });
@@ -71,7 +70,7 @@ module.exports = async function handler(req, res){
     return;
   }
 
-  const text = '{' + (j.content || []).map(c => c.text || '').join('');
+  const text = (j.content || []).map(c => c.text || '').join('');
   const start = text.indexOf('{');
   const end = text.lastIndexOf('}');
   if (start < 0 || end < 0) { send(res, 502, { error: 'no_json', detail: text.slice(0, 300) }); return; }
