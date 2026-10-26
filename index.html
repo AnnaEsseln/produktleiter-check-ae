@@ -851,11 +851,12 @@ $('go').addEventListener('click', async () => {
   $('result').classList.remove('hidden');
   $('out').innerHTML = '<p class="note" style="text-align:center;padding:40px 0">Die Treppe wird aus deiner Expertise erstellt …</p>';
   $('chipText').textContent = 'Richtung: ' + dirs.map(t => BANDS[t].label).join(' + ');
+  let usedFallback = false;
   for (const { t, r } of results){
     const ai = await aiSuggest(inp, t, r);
-    if (ai) applyAi(r, ai, t);
+    if (ai) applyAi(r, ai, t); else usedFallback = true;
   }
-  $('out').innerHTML = '';
+  $('out').innerHTML = usedFallback ? '<p class="notice warn" style="margin:0 0 20px">Die individuelle Treppe konnte gerade nicht erstellt werden. Du siehst die Standard-Treppen. Bitte versuch es gleich noch einmal.</p>' : '';
   lastText = '';
   results.forEach(({ t, r }) => {
     const box = document.createElement('section');

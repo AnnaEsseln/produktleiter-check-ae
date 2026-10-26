@@ -12,6 +12,7 @@ const RULES = [
   'Jede Idee ist konkret und nennt, was das Produkt ist, was es kann und welches Ziel es hat. Der Satz "what" erklärt das Produkt in einem Satz. Der Satz "can" erklärt den Nutzen in einem Satz. Keine Pflichtfelder fehlen.',
   'Tool nur setzen, wenn das Produkt ein interaktiver Rechner oder Check sein kann. Dann gib in "tool" in einem Satz die Eingaben und das Ergebnis an. Sonst leerer String.',
   'Wenn der Nutzer schon Produkte hat, baue die Treppe so, dass sie zu dessen eigenem Produkt führt (Anker). Die Stufen davor bereiten das Anker-Produkt vor.',
+  'Bevor du die Stufen schreibst, arbeite konkret heraus: Nenne dir drei konkrete Aussagen aus der Expertise (wer, was, wie). Jede Stufe muss auf eine dieser Aussagen zurückgehen. Verwende keine allgemeinen Ideen, die auch zu anderen Expertisen passen würden. Jede Formulierung muss genau zu dieser Expertise passen.',
   'Gib die Antwort nur als JSON im folgenden Format zurück, ohne weiteren Text: {"freebie":{"name":"","what":"","can":"","tool":""},"mini":{"name":"","what":"","can":"","tool":""},"bump":{"name":"","what":"","can":"","tool":""},"upsell":{"name":"","what":"","can":"","tool":""},"haupt":{"name":"","what":"","can":"","tool":""},"texts":{"freebie":"","mini":"","bump":"","upsell":"","haupt":""}}',
   'Die "texts" sind je ein Satz pro Stufe, der erklärt, welche Rolle die Stufe in dieser Treppe spielt. Sie müssen zur Expertise passen.'
 
